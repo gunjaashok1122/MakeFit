@@ -160,10 +160,16 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    if (FirebaseService.instance.isFirebaseAvailable) {
+      await FirebaseService.instance.logOut();
+    } else {
+      await Future.delayed(const Duration(milliseconds: 800));
+    }
 
     _isAuthenticated = false;
     _userId = null;
+    _userName = 'Alex Johnson';
+    _userEmail = 'alex@example.com';
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('is_authenticated');
