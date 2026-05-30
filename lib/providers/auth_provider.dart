@@ -48,11 +48,11 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = true;
       _userId = 'user_${email.hashCode}';
       _userEmail = email;
-      // Extract username from email
-      _userName = email.split('@')[0];
-      _userName = _userName[0].toUpperCase() + _userName.substring(1);
 
       final prefs = await SharedPreferences.getInstance();
+      _userName = prefs.getString('user_name') ?? email.split('@')[0];
+      _userName = _userName[0].toUpperCase() + _userName.substring(1);
+      
       await prefs.setBool('is_authenticated', true);
       await prefs.setString('user_id', _userId!);
       await prefs.setString('user_name', _userName);

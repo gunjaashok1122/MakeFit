@@ -67,103 +67,8 @@ def main():
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 60px;
-      max-width: 1200px;
       width: 100%;
-      padding: 40px;
-    }
-
-    /* Left Sidebar Panel */
-    .sidebar {
-      max-width: 360px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .logo-container {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .logo-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--deep-purple), var(--neon-purple));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 0 20px rgba(157, 78, 221, 0.4);
-    }
-
-    .logo-icon svg {
-      width: 28px;
-      height: 28px;
-      fill: none;
-      stroke: white;
-      stroke-width: 2;
-    }
-
-    .brand-name {
-      font-size: 32px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      background: linear-gradient(90deg, #ffffff, var(--neon-purple));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .tagline {
-      font-size: 15px;
-      color: var(--text-grey);
-      line-height: 1.6;
-    }
-
-    .card {
-      background: var(--glass-grad);
-      border: var(--glass-border);
-      border-radius: 16px;
-      padding: 24px;
-      backdrop-filter: blur(10px);
-    }
-
-    .card h3 {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
-    .card p {
-      font-size: 13px;
-      color: var(--text-grey);
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      background: linear-gradient(135deg, var(--deep-purple), var(--neon-purple));
-      border: none;
-      border-radius: 24px;
-      color: white;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      text-decoration: none;
-      box-shadow: 0 4px 15px rgba(157, 78, 221, 0.3);
-      transition: all 0.2s ease;
-      width: 100%;
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(157, 78, 221, 0.4);
+      height: 100vh;
     }
 
     /* Right Smartphone Frame Container */
@@ -272,46 +177,33 @@ def main():
     /* Interactive UI helper: scan description on mobile screens */
     @media (max-width: 900px) {
       .container {
-        flex-direction: column;
-        padding: 20px;
-        overflow-y: auto;
+        padding: 0;
         height: 100vh;
-        gap: 30px;
-      }
-      .sidebar {
-        max-width: 100%;
-        text-align: center;
-        align-items: center;
       }
       .phone-wrapper {
-        width: 340px;
-        height: 680px;
+        width: 100%;
+        height: 100vh;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+      .phone-notch {
+        display: none;
+      }
+      .phone-screen {
+        border-radius: 0;
+      }
+      iframe {
+        padding-top: 0;
+      }
+      .status-bar {
+        display: none;
       }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="sidebar">
-      <div class="logo-container">
-        <div class="logo-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M13 10V3L4 14H11V21L20 10H13Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <h1 class="brand-name">Make Fit</h1>
-      </div>
-      <p class="tagline">Experience the ultimate fitness companion. Track your daily workouts, water intake, sleep patterns, and mood seamlessly in a modern neon interface.</p>
-      
-      <div class="card">
-        <h3>Live Mobile App Simulator</h3>
-        <p>You are viewing the web preview inside a realistic device simulator. Tap elements inside the phone to interact with the live application.</p>
-        <a href="app.html" class="btn" target="_blank">
-          Open Fullscreen
-        </a>
-      </div>
-    </div>
-
     <div class="phone-container">
       <div class="phone-wrapper">
         <div class="phone-notch"></div>
