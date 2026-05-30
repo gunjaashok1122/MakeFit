@@ -28,13 +28,17 @@ class FirebaseService {
   bool get isFirebaseAvailable => _isFirebaseAvailable;
 
   // --- Auth Integration ---
-  Future<UserCredential?> signUpWithEmail(String email, String password) async {
+  Future<UserCredential?> signUpWithEmail(String name, String email, String password) async {
     if (!_isFirebaseAvailable) return null;
     try {
-      return await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+      if (credential.user != null) {
+        await credential.user!.updateDisplayName(name);
+      }
+      return credential;
     } catch (e) {
       print('Firebase Auth Sign Up failed: $e');
       return null;

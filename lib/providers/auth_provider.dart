@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/firebase_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
@@ -41,18 +42,33 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Mock validation
-    await Future.delayed(const Duration(seconds: 1));
+    String name = '';
+    if (FirebaseService.instance.isFirebaseAvailable) {
+      final credential = await FirebaseService.instance.loginWithEmail(email, password);
+      if (credential == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      _userId = credential.user?.uid;
+      name = credential.user?.displayName ?? '';
+    } else {
+      await Future.delayed(const Duration(seconds: 1));
+      _userId = 'user_${email.hashCode}';
+    }
 
     if (email.contains('@') && password.length >= 6) {
       _isAuthenticated = true;
-      _userId = 'user_${email.hashCode}';
       _userEmail = email;
+      if (name.isNotEmpty) {
+        _userName = name;
+      } else {
+        // Extract username from email
+        _userName = email.split('@')[0];
+        _userName = _userName[0].toUpperCase() + _userName.substring(1);
+      }
 
       final prefs = await SharedPreferences.getInstance();
-      _userName = prefs.getString('user_name') ?? email.split('@')[0];
-      _userName = _userName[0].toUpperCase() + _userName.substring(1);
-      
       await prefs.setBool('is_authenticated', true);
       await prefs.setString('user_id', _userId!);
       await prefs.setString('user_name', _userName);
@@ -73,11 +89,21 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
+    if (FirebaseService.instance.isFirebaseAvailable) {
+      final credential = await FirebaseService.instance.signUpWithEmail(name, email, password);
+      if (credential == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      _userId = credential.user?.uid;
+    } else {
+      await Future.delayed(const Duration(seconds: 1));
+      _userId = 'user_${email.hashCode}';
+    }
 
     if (name.isNotEmpty && email.contains('@') && password.length >= 6) {
       _isAuthenticated = true;
-      _userId = 'user_${email.hashCode}';
       _userName = name;
       _userEmail = email;
 
