@@ -1,0 +1,44 @@
+name: makefit
+description: A premium mobile fitness tracking and health monitoring application.
+version: 1.0.0+1
+
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.1.2
+
+  # Local Persistence
+  sqflite: ^2.3.0
+  path: ^1.9.0
+  shared_preferences: ^2.2.2
+
+  # UI and Charts
+  fl_chart: ^0.66.0
+  intl: ^0.19.0
+  google_fonts: ^6.1.0
+  flutter_spinkit: ^5.2.0
+
+  # Utilities
+  uuid: ^4.3.3
+  connectivity_plus: ^5.0.2
+  share_plus: ^7.2.1
+  flutter_local_notifications: ^16.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Ensure assets are defined if we reference local files
+  assets:
+    - assets/images/
