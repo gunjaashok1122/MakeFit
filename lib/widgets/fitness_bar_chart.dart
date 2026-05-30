@@ -1,5 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import '../themes/app_theme.dart';
 
 class FitnessBarChart extends StatelessWidget {
@@ -75,7 +75,7 @@ class FitnessBarChart extends StatelessWidget {
           maxY: determinedMaxY,
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (group) => AppTheme.cardNavyLight,
+              tooltipBgColor: AppTheme.cardNavyLight,
               tooltipRoundedRadius: 8,
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 return BarTooltipItem(

@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import '../themes/app_theme.dart';
 
 class ProgressRing extends StatefulWidget {

@@ -1,4 +1,4 @@
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import '../themes/app_theme.dart';
 import '../widgets/neon_button.dart';
 import 'auth_screen.dart';

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../themes/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -97,9 +97,13 @@ class _SplashScreenState extends State<SplashScreen>
                   width: 300,
                   height: 300,
                   decoration: BoxDecoration(
-                    color: AppTheme.neonPurple.withOpacity(0.15),
                     shape: BoxShape.circle,
-                    blurRadius: 100,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.neonPurple.withOpacity(0.15),
+                        blurRadius: 100,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -110,9 +114,13 @@ class _SplashScreenState extends State<SplashScreen>
                   width: 350,
                   height: 350,
                   decoration: BoxDecoration(
-                    color: AppTheme.neonPink.withOpacity(0.1),
                     shape: BoxShape.circle,
-                    blurRadius: 120,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.neonPink.withOpacity(0.1),
+                        blurRadius: 120,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -296,8 +304,4 @@ class _RunnerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-class Shadow {
-  final Color color;
-  final double blurRadius;
-  const Shadow({required this.color, required this.blurRadius});
-}
+

@@ -1,5 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import '../themes/app_theme.dart';
 
 class FitnessLineChart extends StatelessWidget {
@@ -113,7 +113,7 @@ class FitnessLineChart extends StatelessWidget {
           maxY: determinedMaxY,
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (touchedSpot) => AppTheme.cardNavyLight,
+              tooltipBgColor: AppTheme.cardNavyLight,
               tooltipRoundedRadius: 8,
               getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                 return touchedBarSpots.map((barSpot) {
@@ -136,7 +136,6 @@ class FitnessLineChart extends StatelessWidget {
                 (index) => FlSpot(index.toDouble(), spots[index]),
               ),
               isCurved: true,
-              curveMode: CurveMode.cubic,
               color: lineColor,
               barWidth: 3.5,
               isStrokeCapRound: true,

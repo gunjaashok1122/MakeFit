@@ -1,4 +1,4 @@
-import 'package:flutter/material';
+import 'package:flutter/material.dart';
 import '../themes/app_theme.dart';
 import 'home_screen.dart';
 import 'activity_summary_screen.dart';
