@@ -1,4 +1,28 @@
-<!DOCTYPE html>
+import os
+import shutil
+
+def main():
+    print("Building Flutter web app...")
+    # This script assumes build\web is already compiled or compiles it.
+    web_dir = os.path.join("build", "web")
+    
+    if not os.path.exists(web_dir):
+        print(f"Error: Build directory {web_dir} does not exist. Run 'flutter build web' first.")
+        return
+
+    index_path = os.path.join(web_dir, "index.html")
+    app_path = os.path.join(web_dir, "app.html")
+
+    # Rename original index.html to app.html if app.html does not exist yet
+    # Or overwrite app.html with current index.html if we are rebuilding
+    if os.path.exists(index_path):
+        print("Renaming index.html to app.html...")
+        if os.path.exists(app_path):
+            os.remove(app_path)
+        os.rename(index_path, app_path)
+    
+    # Write the new index.html with the device mockup
+    simulator_html = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -307,4 +331,13 @@
     </div>
   </div>
 </body>
-</html>
+</html>"""
+
+    print("Writing simulator index.html...")
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(simulator_html)
+
+    print("Done wrapping web build!")
+
+if __name__ == "__main__":
+    main()
