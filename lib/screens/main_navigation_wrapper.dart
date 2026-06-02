@@ -31,14 +31,16 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: AppTheme.cardNavyLight.withOpacity(0.4),
-              width: 1.2,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: AppTheme.cardNavyLight.withOpacity(0.4),
+                width: 1.2,
+              ),
             ),
-          ),
           boxShadow: [
             BoxShadow(
               color: AppTheme.neonPurple.withOpacity(0.04),
@@ -96,6 +98,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
           ],
         ),
       ),
+     ),
     );
   }
 }

@@ -68,7 +68,10 @@ class _WaterIntakeScreenState extends State<WaterIntakeScreen> {
                               fontFamily: 'Outfit',
                             ),
                           ),
-                          const SizedBox(width: 48), // spacer balance
+                          IconButton(
+                            icon: const Icon(Icons.home_outlined, color: AppTheme.textWhite, size: 22),
+                            onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 24),

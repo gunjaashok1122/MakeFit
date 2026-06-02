@@ -12,6 +12,7 @@ import 'worklist_screen.dart';
 import 'log_activity_screen.dart';
 import 'water_intake_screen.dart';
 import 'body_stats_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -91,8 +92,8 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    // Notification bell with connectivity dot
-                    Stack(
+                    // Settings & Notification actions
+                    Row(
                       children: [
                         Container(
                           decoration: BoxDecoration(
@@ -100,29 +101,48 @@ class HomeScreen extends StatelessWidget {
                             color: AppTheme.cardNavyLight.withOpacity(0.5),
                           ),
                           child: IconButton(
-                            icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.textWhite),
+                            icon: const Icon(Icons.settings_outlined, color: AppTheme.textWhite, size: 20),
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('No new alerts. Stay active!'),
-                                ),
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => const SettingsScreen()),
                               );
                             },
                           ),
                         ),
-                        if (!fitnessProvider.isConnected)
-                          Positioned(
-                            right: 4,
-                            top: 4,
-                            child: Container(
-                              width: 10,
-                              height: 10,
-                              decoration: const BoxDecoration(
-                                color: AppTheme.neonPink,
+                        const SizedBox(width: 8),
+                        Stack(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
+                                color: AppTheme.cardNavyLight.withOpacity(0.5),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.textWhite),
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('No new alerts. Stay active!'),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                          ),
+                            if (!fitnessProvider.isConnected)
+                              Positioned(
+                                right: 4,
+                                top: 4,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.neonPink,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ],

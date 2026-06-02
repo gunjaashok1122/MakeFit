@@ -125,7 +125,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
                         fontFamily: 'Outfit',
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    IconButton(
+                      icon: const Icon(Icons.home_outlined, color: AppTheme.textWhite, size: 22),
+                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                    ),
                   ],
                 ),
               ),
