@@ -135,11 +135,23 @@
       padding-top: 38px; /* Offset status bar */
     }
 
-    /* Interactive UI helper: scan description on mobile screens */
-    @media (max-width: 900px) {
+    /* Mobile responsive override */
+    @media (max-width: 1023px) {
+      body {
+        background-color: var(--dark-navy);
+      }
       .phone-wrapper {
-        width: 340px;
-        height: 680px;
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        padding: 0;
+        box-shadow: none;
+      }
+      .phone-notch, .status-bar {
+        display: none;
+      }
+      iframe {
+        padding-top: 0;
       }
     }
   </style>
