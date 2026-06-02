@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../themes/app_theme.dart';
 import '../providers/auth_provider.dart';
-import 'onboarding_screen.dart';
+import 'auth_screen.dart';
 import 'main_navigation_wrapper.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -61,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen>
         pageBuilder: (context, animation, secondaryAnimation) =>
             authProvider.isAuthenticated
                 ? const MainNavigationWrapper()
-                : const OnboardingScreen(),
+                : const AuthScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },

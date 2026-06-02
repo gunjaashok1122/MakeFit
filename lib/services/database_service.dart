@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/foundation.dart';
+import 'firebase_service.dart';
 import '../models/workout_model.dart';
 import '../models/activity_model.dart';
 import '../models/water_model.dart';
@@ -538,35 +539,54 @@ class DatabaseService {
     return list;
   }
 
-  Future<int> insert(String table, Map<String, dynamic> values) async {
+  Future<int> insert(String table, Map<String, dynamic> values, {bool syncToCloud = true}) async {
+    int result = 0;
     if (!_useInMemoryFallback) {
       try {
         final db = await database;
-        return await db.insert(table, values, conflictAlgorithm: ConflictAlgorithm.replace);
+        result = await db.insert(table, values, conflictAlgorithm: ConflictAlgorithm.replace);
       } catch (e) {
         print('Insert failed, falling back to In-Memory DB: $e');
         _useInMemoryFallback = true;
         _seedMemoryDatabase();
+        _memoryDb[table]!.add(values);
+        result = 1;
       }
+    } else {
+      _memoryDb[table]!.add(values);
+      result = 1;
     }
     
-    _memoryDb[table]!.add(values);
-    return 1;
+    if (syncToCloud && result > 0) {
+      _syncInsert(table, values);
+    }
+    return result;
   }
 
-  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) async {
+  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs, bool syncToCloud = true}) async {
+    int result = 0;
     if (!_useInMemoryFallback) {
       try {
         final db = await database;
-        return await db.update(table, values, where: where, whereArgs: whereArgs);
+        result = await db.update(table, values, where: where, whereArgs: whereArgs);
       } catch (e) {
         print('Update failed, falling back to In-Memory DB: $e');
         _useInMemoryFallback = true;
         _seedMemoryDatabase();
+        result = _updateMemory(table, values, where: where, whereArgs: whereArgs);
       }
+    } else {
+      result = _updateMemory(table, values, where: where, whereArgs: whereArgs);
     }
     
-    if (where != null && where.contains('id = ?') && whereArgs != null) {
+    if (syncToCloud && result > 0) {
+      _syncUpdate(table, values, where, whereArgs);
+    }
+    return result;
+  }
+
+  int _updateMemory(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) {
+    if (where != null && where.contains('id = ?') && whereArgs != null && whereArgs.isNotEmpty) {
       final id = whereArgs[0];
       final index = _memoryDb[table]!.indexWhere((item) => item['id'] == id);
       if (index != -1) {
@@ -575,7 +595,7 @@ class DatabaseService {
         _memoryDb[table]![index] = updated;
         return 1;
       }
-    } else if (where != null && where.contains('type = ?') && whereArgs != null) {
+    } else if (where != null && where.contains('type = ?') && whereArgs != null && whereArgs.isNotEmpty) {
       final type = whereArgs[0];
       int count = 0;
       for (int i = 0; i < _memoryDb[table]!.length; i++) {
@@ -591,25 +611,159 @@ class DatabaseService {
     return 0;
   }
 
-  Future<int> delete(String table, {String? where, List<dynamic>? whereArgs}) async {
+  Future<int> delete(String table, {String? where, List<dynamic>? whereArgs, bool syncToCloud = true}) async {
+    int result = 0;
     if (!_useInMemoryFallback) {
       try {
         final db = await database;
-        return await db.delete(table, where: where, whereArgs: whereArgs);
+        result = await db.delete(table, where: where, whereArgs: whereArgs);
       } catch (e) {
         print('Delete failed, falling back to In-Memory DB: $e');
         _useInMemoryFallback = true;
         _seedMemoryDatabase();
+        result = _deleteMemory(table, where, whereArgs);
       }
+    } else {
+      result = _deleteMemory(table, where, whereArgs);
     }
     
-    if (where != null && where.contains('id = ?') && whereArgs != null) {
+    if (syncToCloud && result > 0) {
+      _syncDelete(table, where, whereArgs);
+    }
+    return result;
+  }
+
+  int _deleteMemory(String table, String? where, List<dynamic>? whereArgs) {
+    if (where != null && where.contains('id = ?') && whereArgs != null && whereArgs.isNotEmpty) {
       final id = whereArgs[0];
       final lengthBefore = _memoryDb[table]!.length;
       _memoryDb[table]!.removeWhere((item) => item['id'] == id);
       return lengthBefore - _memoryDb[table]!.length;
     }
     return 0;
+  }
+
+  // --- CLOUD SYNC HELPERS ---
+
+  void _syncInsert(String table, Map<String, dynamic> values) {
+    final recordId = values['id']?.toString();
+    if (recordId != null) {
+      FirebaseService.instance.syncRecordToCloud(table, recordId, values);
+    }
+  }
+
+  void _syncUpdate(String table, Map<String, dynamic> values, String? where, List<dynamic>? whereArgs) async {
+    if (where != null && where.contains('id = ?') && whereArgs != null && whereArgs.isNotEmpty) {
+      final recordId = whereArgs[0].toString();
+      final rows = await query(table, where: 'id = ?', whereArgs: [recordId]);
+      if (rows.isNotEmpty) {
+        FirebaseService.instance.syncRecordToCloud(table, recordId, rows.first);
+      }
+    }
+  }
+
+  void _syncDelete(String table, String? where, List<dynamic>? whereArgs) {
+    if (where != null && where.contains('id = ?') && whereArgs != null && whereArgs.isNotEmpty) {
+      final recordId = whereArgs[0].toString();
+      FirebaseService.instance.deleteRecordFromCloud(table, recordId);
+    }
+  }
+
+  Future<void> pullAndSyncAllFromCloud(String userId) async {
+    final tables = [
+      'workouts',
+      'activity_logs',
+      'water_logs',
+      'body_stats',
+      'sleep_logs',
+      'mood_logs',
+      'goals',
+      'badges',
+      'challenges'
+    ];
+
+    for (final table in tables) {
+      try {
+        final records = await FirebaseService.instance.pullCollectionFromCloud(table);
+        if (records.isEmpty) continue;
+
+        print('Pulled ${records.length} records for $table from cloud.');
+
+        // Overwrite or insert locally without triggering sync back
+        if (!_useInMemoryFallback) {
+          final db = await database;
+          await db.transaction((txn) async {
+            for (final record in records) {
+              await txn.insert(
+                table,
+                record,
+                conflictAlgorithm: ConflictAlgorithm.replace,
+              );
+            }
+          });
+        } else {
+          // In-memory fallback
+          for (final record in records) {
+            final id = record['id'];
+            if (id != null) {
+              final index = _memoryDb[table]!.indexWhere((item) => item['id'] == id);
+              if (index != -1) {
+                _memoryDb[table]![index] = record;
+              } else {
+                _memoryDb[table]!.add(record);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Error syncing table $table from cloud: $e');
+      }
+    }
+  }
+
+  Future<void> clearAllData() async {
+    final tables = [
+      'workouts',
+      'activity_logs',
+      'water_logs',
+      'body_stats',
+      'sleep_logs',
+      'mood_logs',
+      'goals',
+      'badges',
+      'challenges'
+    ];
+    if (!_useInMemoryFallback) {
+      try {
+        final db = await database;
+        await db.transaction((txn) async {
+          for (final table in tables) {
+            await txn.delete(table);
+          }
+        });
+      } catch (e) {
+        print('Failed to clear SQLite DB: $e');
+      }
+    }
+    
+    // Clear memory database
+    for (final table in tables) {
+      _memoryDb[table]?.clear();
+    }
+  }
+
+  Future<void> reseedDatabase() async {
+    await clearAllData();
+    if (!_useInMemoryFallback) {
+      try {
+        final db = await database;
+        await _seedDB(db);
+      } catch (e) {
+        print('Failed to reseed database: $e');
+      }
+    } else {
+      _seedMemoryDatabase();
+    }
   }
 }
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/workout_model.dart';
@@ -138,6 +139,100 @@ class FirebaseService {
     } catch (e) {
       print('Failed to pull workouts from cloud: $e');
       return [];
+    }
+  }
+
+  // --- GENERIC CROSS-DEVICE SYNC METHODS ---
+  String? get currentUserId => FirebaseAuth.instance.currentUser?.uid;
+
+  Future<void> syncRecordToCloud(String collectionName, String recordId, Map<String, dynamic> data) async {
+    final userId = currentUserId;
+    if (!_isFirebaseAvailable || userId == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection(collectionName)
+          .doc(recordId)
+          .set(data);
+      print('Synced $collectionName/$recordId to Firestore.');
+    } catch (e) {
+      print('Failed to sync $collectionName to cloud: $e');
+    }
+  }
+
+  Future<void> deleteRecordFromCloud(String collectionName, String recordId) async {
+    final userId = currentUserId;
+    if (!_isFirebaseAvailable || userId == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection(collectionName)
+          .doc(recordId)
+          .delete();
+      print('Deleted $collectionName/$recordId from Firestore.');
+    } catch (e) {
+      print('Failed to delete $collectionName from cloud: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> pullCollectionFromCloud(String collectionName) async {
+    final userId = currentUserId;
+    if (!_isFirebaseAvailable || userId == null) return [];
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection(collectionName)
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print('Failed to pull $collectionName from cloud: $e');
+      return [];
+    }
+  }
+
+  Future<void> syncUserSettingsToCloud({
+    required String dob,
+    required List<Map<String, dynamic>> savedTasks,
+    required int focusSessionsCleared,
+    required List<Map<String, dynamic>> focusHistory,
+  }) async {
+    final userId = currentUserId;
+    if (!_isFirebaseAvailable || userId == null) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('config')
+          .set({
+            'dob': dob,
+            'saved_tasks': jsonEncode(savedTasks),
+            'focus_sessions_cleared': focusSessionsCleared,
+            'focus_history': jsonEncode(focusHistory),
+          });
+      print('Synced user settings to cloud.');
+    } catch (e) {
+      print('Failed to sync user settings: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> pullUserSettingsFromCloud() async {
+    final userId = currentUserId;
+    if (!_isFirebaseAvailable || userId == null) return null;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('settings')
+          .doc('config')
+          .get();
+      return doc.data();
+    } catch (e) {
+      print('Failed to pull user settings from cloud: $e');
+      return null;
     }
   }
 }

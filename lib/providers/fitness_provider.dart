@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/workout_model.dart';
 import '../models/activity_model.dart';
 import '../models/water_model.dart';
@@ -14,6 +15,7 @@ import '../models/challenge_model.dart';
 import '../services/database_service.dart';
 import '../services/ai_service.dart';
 import '../services/notification_service.dart';
+import '../services/firebase_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class FitnessProvider extends ChangeNotifier {
@@ -73,6 +75,7 @@ class FitnessProvider extends ChangeNotifier {
   FitnessProvider() {
     initData();
     _listenToConnectivity();
+    _listenToAuthChanges();
   }
 
   Future<void> initData() async {
@@ -460,6 +463,7 @@ class FitnessProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_dob', newDob.toIso8601String());
+      await _syncSettingsToCloud();
     } catch (e) {
       print('Error saving DOB: $e');
     }
@@ -483,6 +487,7 @@ class FitnessProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('saved_tasks', jsonEncode(_savedTasks));
+      await _syncSettingsToCloud();
     } catch (e) {
       print('Error saving saved tasks: $e');
     }
@@ -568,6 +573,7 @@ class FitnessProvider extends ChangeNotifier {
       'time': timeStr,
     });
     await _saveFocusHistory();
+    await _syncSettingsToCloud();
     notifyListeners();
   }
 
@@ -602,5 +608,106 @@ class FitnessProvider extends ChangeNotifier {
       _isConnected = result != ConnectivityResult.none;
       notifyListeners();
     });
+  }
+
+  void _listenToAuthChanges() {
+    if (!FirebaseService.instance.isFirebaseAvailable) return;
+    FirebaseAuth.instance.authStateChanges().listen((user) async {
+      if (user != null) {
+        print('Auth state changed: User logged in: ${user.uid}. Starting cloud sync...');
+        _isLoading = true;
+        notifyListeners();
+        
+        try {
+          // 1. Pull database tables from cloud and write locally
+          await _db.pullAndSyncAllFromCloud(user.uid);
+          
+          // 2. Pull settings from cloud and write to SharedPrefs & memory variables
+          await pullAndSyncSettingsFromCloud();
+          
+          // 3. Load all data from DB to memory
+          await _loadAllData();
+          
+          // 4. Generate AI suggestions
+          _generateAISuggestions();
+        } catch (e) {
+          print('Error during auth cloud sync: $e');
+        } finally {
+          _isLoading = false;
+          notifyListeners();
+        }
+      } else {
+        print('Auth state changed: User logged out. Clearing and reseeding database...');
+        _isLoading = true;
+        notifyListeners();
+        try {
+          await _db.reseedDatabase();
+          
+          // Clear preferences
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('user_dob');
+          await prefs.remove('saved_tasks');
+          await prefs.remove('focus_sessions_cleared');
+          await prefs.remove('focus_history');
+          
+          // Reset local variables
+          _dob = DateTime(2001, 1, 15);
+          _savedTasks = [];
+          _focusSessionsCleared = 0;
+          _focusHistory = [];
+          
+          // Reload memory lists
+          await _loadAllData();
+          _generateAISuggestions();
+        } catch (e) {
+          print('Error resetting database on logout: $e');
+        } finally {
+          _isLoading = false;
+          notifyListeners();
+        }
+      }
+    });
+  }
+
+  Future<void> pullAndSyncSettingsFromCloud() async {
+    final data = await FirebaseService.instance.pullUserSettingsFromCloud();
+    if (data == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    
+    if (data['dob'] != null) {
+      final dobStr = data['dob'] as String;
+      _dob = DateTime.parse(dobStr);
+      await prefs.setString('user_dob', dobStr);
+    }
+    
+    if (data['saved_tasks'] != null) {
+      final List<dynamic> decoded = jsonDecode(data['saved_tasks'] as String);
+      _savedTasks = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      await prefs.setString('saved_tasks', data['saved_tasks'] as String);
+    }
+
+    if (data['focus_sessions_cleared'] != null) {
+      _focusSessionsCleared = data['focus_sessions_cleared'] as int;
+      await prefs.setInt('focus_sessions_cleared', _focusSessionsCleared);
+    }
+
+    if (data['focus_history'] != null) {
+      final List<dynamic> decoded = jsonDecode(data['focus_history'] as String);
+      _focusHistory = decoded.cast<Map<String, dynamic>>();
+      await prefs.setString('focus_history', data['focus_history'] as String);
+    }
+  }
+
+  Future<void> _syncSettingsToCloud() async {
+    final userId = FirebaseService.instance.currentUserId;
+    if (userId == null) return;
+    
+    await FirebaseService.instance.syncUserSettingsToCloud(
+      dob: _dob.toIso8601String(),
+      savedTasks: _savedTasks,
+      focusSessionsCleared: _focusSessionsCleared,
+      focusHistory: _focusHistory,
+    );
   }
 }

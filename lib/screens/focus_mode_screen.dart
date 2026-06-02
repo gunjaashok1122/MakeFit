@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import '../themes/app_theme.dart';
 import '../providers/fitness_provider.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/neon_button.dart';
-import 'worklist_screen.dart';
+import '../services/sound_player.dart';
+import '../services/notification_service.dart';
 
 class FocusModeScreen extends StatefulWidget {
   const FocusModeScreen({Key? key}) : super(key: key);
@@ -77,7 +77,22 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
     final fitnessProvider = Provider.of<FitnessProvider>(context, listen: false);
     fitnessProvider.incrementFocusSessionsCleared();
 
-    if (_selectedIndex >= 0 && _selectedIndex < fitnessProvider.savedTasks.length) {
+    // Play alarm sound (Web synthesis fallback)
+    playAlarmSoundWeb();
+
+    final isPreset = _selectedIndex >= 0 && _selectedIndex < fitnessProvider.savedTasks.length;
+    final taskName = isPreset ? (fitnessProvider.savedTasks[_selectedIndex]['name'] as String? ?? 'Workout') : 'Custom session';
+
+    // Show native notification (rings device sound)
+    NotificationService.instance.showNotification(
+      id: 888,
+      title: 'Focus Time Up! ⏰',
+      body: isPreset 
+          ? 'Finished: "$taskName"' 
+          : 'Custom focus session completed!',
+    );
+
+    if (isPreset) {
       final item = fitnessProvider.savedTasks[_selectedIndex];
       final name = item['name'] as String? ?? 'Workout';
 
@@ -640,6 +655,20 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
                                 color: AppTheme.textWhite,
                               ),
                               onPressed: _isRunning ? _pauseTimer : _startTimer,
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // Skip (Clear)
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.textWhite.withOpacity(0.06),
+                            ),
+                            child: IconButton(
+                              iconSize: 22,
+                              padding: const EdgeInsets.all(10),
+                              icon: const Icon(Icons.skip_next_rounded, color: AppTheme.textWhite),
+                              onPressed: _skipTimer,
                             ),
                           ),
                         ],
