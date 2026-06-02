@@ -50,25 +50,29 @@
       user-select: none;
     }
 
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       background-color: var(--dark-navy);
       background-image: radial-gradient(circle at top right, rgba(157, 78, 221, 0.08), transparent 300px),
                         radial-gradient(circle at bottom left, rgba(224, 30, 121, 0.05), transparent 300px);
       color: #ffffff;
-      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow-x: hidden;
-      margin: 0;
-      padding: 0;
+      overflow: hidden;
     }
 
     /* Container holding simulator + controller */
     .app-simulator-container {
       display: flex;
       width: 100%;
-      height: 100vh;
+      height: 100%;
       align-items: stretch;
       justify-content: center;
       transition: all 0.3s ease;
@@ -150,8 +154,9 @@
     /* The smartphone frame */
     .phone-wrapper {
       position: relative;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -301,14 +306,14 @@
         align-items: center;
         gap: 30px;
         max-width: 850px;
-        height: 800px;
+        height: 740px;
       }
 
       .control-panel {
         display: flex;
         flex-direction: column;
         width: 320px;
-        height: 740px;
+        height: 680px;
         background: var(--card-navy);
         border: var(--glass-border);
         border-radius: 28px;
@@ -318,8 +323,8 @@
       }
 
       .phone-wrapper {
-        width: 380px;
-        height: 760px;
+        width: 350px;
+        height: 700px;
         background: #000000;
         border-radius: 48px;
         padding: 12px;
@@ -2874,7 +2879,14 @@
     }
 
     // Navigation routing controller
+    let splashScreenTimer = null;
+
     function showScreen(screenId) {
+      // Clear any auto-transition timer if navigating away from splash
+      if (splashScreenTimer) {
+        clearTimeout(splashScreenTimer);
+        splashScreenTimer = null;
+      }
       // 1. Update active button in sidebar
       document.querySelectorAll('.screen-btn').forEach(btn => {
         btn.classList.remove('active');
@@ -2919,6 +2931,13 @@
       if (screenId === 'worklist') {
         setTimeout(renderWorklist, 50);
         setTimeout(renderSavedList, 50);
+      }
+
+      // Auto-transition splash screen after 2.5s to match Flutter app splash behaviour
+      if (screenId === 'splash') {
+        splashScreenTimer = setTimeout(() => {
+          showScreen('onboarding');
+        }, 2500);
       }
     }
 
@@ -3012,6 +3031,10 @@
     let worklistCharts = [];
 
     function renderHomeBarChart() {
+      if (typeof Chart === 'undefined') {
+        console.warn("Chart.js is not loaded.");
+        return;
+      }
       if (homeBarChart) homeBarChart.destroy();
       const ctx = document.getElementById('homeBarChart').getContext('2d');
       homeBarChart = new Chart(ctx, {
@@ -3036,6 +3059,10 @@
     }
 
     function renderActivityLineCharts() {
+      if (typeof Chart === 'undefined') {
+        console.warn("Chart.js is not loaded.");
+        return;
+      }
       if (stepsLineChart) stepsLineChart.destroy();
       if (caloriesLineChart) caloriesLineChart.destroy();
       
@@ -3087,6 +3114,10 @@
     }
 
     function renderProgressCharts() {
+      if (typeof Chart === 'undefined') {
+        console.warn("Chart.js is not loaded.");
+        return;
+      }
       if (weightLineChart) weightLineChart.destroy();
       const ctx = document.getElementById('weightLineChart').getContext('2d');
       weightLineChart = new Chart(ctx, {
@@ -3169,6 +3200,10 @@
     }
 
     function renderDetailsCharts() {
+      if (typeof Chart === 'undefined') {
+        console.warn("Chart.js is not loaded.");
+        return;
+      }
       if (heartRateChart) heartRateChart.destroy();
       const ctx = document.getElementById('heartRateChart').getContext('2d');
       heartRateChart = new Chart(ctx, {
@@ -3195,6 +3230,10 @@
     }
 
     function renderSleepCharts() {
+      if (typeof Chart === 'undefined') {
+        console.warn("Chart.js is not loaded.");
+        return;
+      }
       if (sleepLineChart) sleepLineChart.destroy();
       const ctx = document.getElementById('sleepLineChart').getContext('2d');
       sleepLineChart = new Chart(ctx, {

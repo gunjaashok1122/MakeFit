@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/foundation.dart';
 import '../models/workout_model.dart';
 import '../models/activity_model.dart';
 import '../models/water_model.dart';
@@ -38,6 +39,10 @@ class DatabaseService {
     // Detect if running on unsupported platform or if we should use fallback
     // In Flutter, sqflite doesn't work on Windows/Web out of the box without sqflite_common_ffi
     // We will automatically toggle the memory fallback if we detect platform errors
+    if (kIsWeb) {
+      _useInMemoryFallback = true;
+      _seedMemoryDatabase();
+    }
   }
 
   Future<Database> get database async {
@@ -509,74 +514,102 @@ class DatabaseService {
   
   // Custom query router
   Future<List<Map<String, dynamic>>> query(String table, {String? where, List<dynamic>? whereArgs, String? orderBy}) async {
-    if (_useInMemoryFallback) {
-      List<Map<String, dynamic>> list = List.from(_memoryDb[table] ?? []);
-      // Apply where filters if in-memory
-      if (where != null && whereArgs != null) {
-        // Simple manual mock implementations for common queries
-        if (where.contains('id = ?')) {
-          list = list.where((item) => item['id'] == whereArgs[0]).toList();
-        } else if (where.contains('type = ?')) {
-          list = list.where((item) => item['type'] == whereArgs[0]).toList();
-        }
+    if (!_useInMemoryFallback) {
+      try {
+        final db = await database;
+        return await db.query(table, where: where, whereArgs: whereArgs, orderBy: orderBy);
+      } catch (e) {
+        print('Query failed, falling back to In-Memory DB: $e');
+        _useInMemoryFallback = true;
+        _seedMemoryDatabase();
       }
-      return list;
     }
-    final db = await database;
-    return await db.query(table, where: where, whereArgs: whereArgs, orderBy: orderBy);
+    
+    List<Map<String, dynamic>> list = List.from(_memoryDb[table] ?? []);
+    // Apply where filters if in-memory
+    if (where != null && whereArgs != null) {
+      // Simple manual mock implementations for common queries
+      if (where.contains('id = ?')) {
+        list = list.where((item) => item['id'] == whereArgs[0]).toList();
+      } else if (where.contains('type = ?')) {
+        list = list.where((item) => item['type'] == whereArgs[0]).toList();
+      }
+    }
+    return list;
   }
 
   Future<int> insert(String table, Map<String, dynamic> values) async {
-    if (_useInMemoryFallback) {
-      _memoryDb[table]!.add(values);
-      return 1;
+    if (!_useInMemoryFallback) {
+      try {
+        final db = await database;
+        return await db.insert(table, values, conflictAlgorithm: ConflictAlgorithm.replace);
+      } catch (e) {
+        print('Insert failed, falling back to In-Memory DB: $e');
+        _useInMemoryFallback = true;
+        _seedMemoryDatabase();
+      }
     }
-    final db = await database;
-    return await db.insert(table, values, conflictAlgorithm: ConflictAlgorithm.replace);
+    
+    _memoryDb[table]!.add(values);
+    return 1;
   }
 
   Future<int> update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) async {
-    if (_useInMemoryFallback) {
-      if (where != null && where.contains('id = ?') && whereArgs != null) {
-        final id = whereArgs[0];
-        final index = _memoryDb[table]!.indexWhere((item) => item['id'] == id);
-        if (index != -1) {
-          final updated = Map<String, dynamic>.from(_memoryDb[table]![index]);
-          updated.addAll(values);
-          _memoryDb[table]![index] = updated;
-          return 1;
-        }
-      } else if (where != null && where.contains('type = ?') && whereArgs != null) {
-        final type = whereArgs[0];
-        int count = 0;
-        for (int i = 0; i < _memoryDb[table]!.length; i++) {
-          if (_memoryDb[table]![i]['type'] == type) {
-            final updated = Map<String, dynamic>.from(_memoryDb[table]![i]);
-            updated.addAll(values);
-            _memoryDb[table]![i] = updated;
-            count++;
-          }
-        }
-        return count;
+    if (!_useInMemoryFallback) {
+      try {
+        final db = await database;
+        return await db.update(table, values, where: where, whereArgs: whereArgs);
+      } catch (e) {
+        print('Update failed, falling back to In-Memory DB: $e');
+        _useInMemoryFallback = true;
+        _seedMemoryDatabase();
       }
-      return 0;
     }
-    final db = await database;
-    return await db.update(table, values, where: where, whereArgs: whereArgs);
+    
+    if (where != null && where.contains('id = ?') && whereArgs != null) {
+      final id = whereArgs[0];
+      final index = _memoryDb[table]!.indexWhere((item) => item['id'] == id);
+      if (index != -1) {
+        final updated = Map<String, dynamic>.from(_memoryDb[table]![index]);
+        updated.addAll(values);
+        _memoryDb[table]![index] = updated;
+        return 1;
+      }
+    } else if (where != null && where.contains('type = ?') && whereArgs != null) {
+      final type = whereArgs[0];
+      int count = 0;
+      for (int i = 0; i < _memoryDb[table]!.length; i++) {
+        if (_memoryDb[table]![i]['type'] == type) {
+          final updated = Map<String, dynamic>.from(_memoryDb[table]![i]);
+          updated.addAll(values);
+          _memoryDb[table]![i] = updated;
+          count++;
+        }
+      }
+      return count;
+    }
+    return 0;
   }
 
   Future<int> delete(String table, {String? where, List<dynamic>? whereArgs}) async {
-    if (_useInMemoryFallback) {
-      if (where != null && where.contains('id = ?') && whereArgs != null) {
-        final id = whereArgs[0];
-        final lengthBefore = _memoryDb[table]!.length;
-        _memoryDb[table]!.removeWhere((item) => item['id'] == id);
-        return lengthBefore - _memoryDb[table]!.length;
+    if (!_useInMemoryFallback) {
+      try {
+        final db = await database;
+        return await db.delete(table, where: where, whereArgs: whereArgs);
+      } catch (e) {
+        print('Delete failed, falling back to In-Memory DB: $e');
+        _useInMemoryFallback = true;
+        _seedMemoryDatabase();
       }
-      return 0;
     }
-    final db = await database;
-    return await db.delete(table, where: where, whereArgs: whereArgs);
+    
+    if (where != null && where.contains('id = ?') && whereArgs != null) {
+      final id = whereArgs[0];
+      final lengthBefore = _memoryDb[table]!.length;
+      _memoryDb[table]!.removeWhere((item) => item['id'] == id);
+      return lengthBefore - _memoryDb[table]!.length;
+    }
+    return 0;
   }
 }
 
