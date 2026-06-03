@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/fitness_provider.dart';
@@ -9,6 +10,24 @@ import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase with the provided configuration parameters
+  try {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyCK_qIFO_nfe3p32Ozs42lBOg6Ny8zCSUA",
+        authDomain: "make-fit-48502.firebaseapp.com",
+        projectId: "make-fit-48502",
+        storageBucket: "make-fit-48502.firebasestorage.app",
+        messagingSenderId: "1088596469711",
+        appId: "1:1088596469711:web:d13aa53c6ef5a56034d4ba",
+        measurementId: "G-YD00299DK4",
+      ),
+    );
+    print("Firebase initialized successfully with make-fit config.");
+  } catch (e) {
+    print("Firebase initialization failed: $e");
+  }
   
   // Initialize notification service wrappers asynchronously (non-blocking)
   NotificationService.instance.init();

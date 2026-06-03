@@ -26,11 +26,16 @@ class FirebaseService {
     }
   }
 
-  bool get isFirebaseAvailable => _isFirebaseAvailable;
+  bool get isFirebaseAvailable {
+    if (!_isFirebaseAvailable) {
+      _checkFirebaseAvailability();
+    }
+    return _isFirebaseAvailable;
+  }
 
   // --- Auth Integration ---
   Future<UserCredential?> signUpWithEmail(String name, String email, String password) async {
-    if (!_isFirebaseAvailable) return null;
+    if (!isFirebaseAvailable) return null;
     try {
       final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -58,7 +63,7 @@ class FirebaseService {
   }
 
   Future<UserCredential?> loginWithEmail(String email, String password) async {
-    if (!_isFirebaseAvailable) return null;
+    if (!isFirebaseAvailable) return null;
     try {
       return await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
@@ -82,7 +87,7 @@ class FirebaseService {
   }
 
   Future<void> syncUserProfileToCloud(String userId, String name, String email, String fitnessLevel) async {
-    if (!_isFirebaseAvailable) return;
+    if (!isFirebaseAvailable) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -102,7 +107,7 @@ class FirebaseService {
   }
 
   Future<Map<String, dynamic>?> pullUserProfileFromCloud(String userId) async {
-    if (!_isFirebaseAvailable) return null;
+    if (!isFirebaseAvailable) return null;
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users')
@@ -118,7 +123,7 @@ class FirebaseService {
   }
 
   Future<void> logOut() async {
-    if (!_isFirebaseAvailable) return;
+    if (!isFirebaseAvailable) return;
     try {
       await FirebaseAuth.instance.signOut();
     } catch (e) {
@@ -128,7 +133,7 @@ class FirebaseService {
 
   // --- Cloud Sync Integrations (Firestore) ---
   Future<void> syncWorkoutToCloud(WorkoutModel workout, String userId) async {
-    if (!_isFirebaseAvailable) return;
+    if (!isFirebaseAvailable) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -143,7 +148,7 @@ class FirebaseService {
   }
 
   Future<void> syncActivityToCloud(ActivityModel activity, String userId) async {
-    if (!_isFirebaseAvailable) return;
+    if (!isFirebaseAvailable) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -157,7 +162,7 @@ class FirebaseService {
   }
 
   Future<void> syncWaterToCloud(WaterModel water, String userId) async {
-    if (!_isFirebaseAvailable) return;
+    if (!isFirebaseAvailable) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -171,7 +176,7 @@ class FirebaseService {
   }
 
   Future<void> syncBodyStatsToCloud(BodyStatsModel stats, String userId) async {
-    if (!_isFirebaseAvailable) return;
+    if (!isFirebaseAvailable) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -185,7 +190,7 @@ class FirebaseService {
   }
 
   Future<List<Map<String, dynamic>>> pullWorkoutsFromCloud(String userId) async {
-    if (!_isFirebaseAvailable) return [];
+    if (!isFirebaseAvailable) return [];
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -205,7 +210,7 @@ class FirebaseService {
 
   Future<void> syncRecordToCloud(String collectionName, String recordId, Map<String, dynamic> data) async {
     final userId = currentUserId;
-    if (!_isFirebaseAvailable || userId == null) return;
+    if (!isFirebaseAvailable || userId == null) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -221,7 +226,7 @@ class FirebaseService {
 
   Future<void> deleteRecordFromCloud(String collectionName, String recordId) async {
     final userId = currentUserId;
-    if (!_isFirebaseAvailable || userId == null) return;
+    if (!isFirebaseAvailable || userId == null) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -237,7 +242,7 @@ class FirebaseService {
 
   Future<List<Map<String, dynamic>>> pullCollectionFromCloud(String collectionName) async {
     final userId = currentUserId;
-    if (!_isFirebaseAvailable || userId == null) return [];
+    if (!isFirebaseAvailable || userId == null) return [];
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -258,7 +263,7 @@ class FirebaseService {
     required List<Map<String, dynamic>> focusHistory,
   }) async {
     final userId = currentUserId;
-    if (!_isFirebaseAvailable || userId == null) return;
+    if (!isFirebaseAvailable || userId == null) return;
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -279,7 +284,7 @@ class FirebaseService {
 
   Future<Map<String, dynamic>?> pullUserSettingsFromCloud() async {
     final userId = currentUserId;
-    if (!_isFirebaseAvailable || userId == null) return null;
+    if (!isFirebaseAvailable || userId == null) return null;
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users')
