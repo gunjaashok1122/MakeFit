@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/firebase_service.dart';
+import '../services/database_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
@@ -38,35 +39,67 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<String?> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();
 
-    String name = '';
-    if (FirebaseService.instance.isFirebaseAvailable) {
-      final credential = await FirebaseService.instance.loginWithEmail(email, password);
-      if (credential == null) {
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-      _userId = credential.user?.uid;
-      name = credential.user?.displayName ?? '';
-    } else {
-      await Future.delayed(const Duration(seconds: 1));
-      _userId = 'user_${email.hashCode}';
-    }
+    try {
+      if (FirebaseService.instance.isFirebaseAvailable) {
+        final credential = await FirebaseService.instance.loginWithEmail(email, password);
+        if (credential == null || credential.user == null) {
+          _isLoading = false;
+          notifyListeners();
+          return 'Authentication failed.';
+        }
+        _userId = credential.user!.uid;
+        _userEmail = credential.user!.email ?? email;
 
-    if (email.contains('@') && password.length >= 6) {
-      _isAuthenticated = true;
-      _userEmail = email;
-      if (name.isNotEmpty) {
-        _userName = name;
+        // Fetch name dynamically from Firestore
+        final profile = await FirebaseService.instance.pullUserProfileFromCloud(_userId!);
+        if (profile != null) {
+          _userName = profile['name'] ?? credential.user!.displayName ?? _userName;
+          _fitnessLevel = profile['fitness_level'] ?? _fitnessLevel;
+        } else {
+          _userName = credential.user!.displayName ?? email.split('@')[0];
+        }
+
+        // Store user in local SQLite for offline access
+        await DatabaseService.instance.insert('users', {
+          'id': _userId!,
+          'name': _userName,
+          'email': _userEmail,
+          'password': password,
+          'fitness_level': _fitnessLevel,
+        }, syncToCloud: false);
       } else {
-        // Extract username from email
-        _userName = email.split('@')[0];
-        _userName = _userName[0].toUpperCase() + _userName.substring(1);
+        // Offline / Local Mode validation
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        final localUsers = await DatabaseService.instance.query(
+          'users',
+          where: 'email = ?',
+          whereArgs: [email],
+        );
+        if (localUsers.isEmpty) {
+          _isLoading = false;
+          notifyListeners();
+          return 'No user found with this email.';
+        }
+
+        final userMap = localUsers.first;
+        if (userMap['password'] != password) {
+          _isLoading = false;
+          notifyListeners();
+          return 'Incorrect password.';
+        }
+
+        _userId = userMap['id']?.toString() ?? 'user_${email.hashCode}';
+        _userName = userMap['name']?.toString() ?? '';
+        _userEmail = userMap['email']?.toString() ?? email;
+        _fitnessLevel = userMap['fitness_level']?.toString() ?? 'Intermediate';
       }
+
+      _isAuthenticated = true;
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_authenticated', true);
@@ -77,35 +110,76 @@ class AuthProvider extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-      return true;
+      return null; // success
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return e.toString().replaceAll('Exception: ', '');
     }
-
-    _isLoading = false;
-    notifyListeners();
-    return false;
   }
 
-  Future<bool> register(String name, String email, String password) async {
+  Future<String?> register(String name, String email, String password) async {
     _isLoading = true;
     notifyListeners();
 
-    if (FirebaseService.instance.isFirebaseAvailable) {
-      final credential = await FirebaseService.instance.signUpWithEmail(name, email, password);
-      if (credential == null) {
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-      _userId = credential.user?.uid;
-    } else {
-      await Future.delayed(const Duration(seconds: 1));
-      _userId = 'user_${email.hashCode}';
-    }
+    try {
+      if (FirebaseService.instance.isFirebaseAvailable) {
+        final credential = await FirebaseService.instance.signUpWithEmail(name, email, password);
+        if (credential == null || credential.user == null) {
+          _isLoading = false;
+          notifyListeners();
+          return 'Registration failed.';
+        }
+        _userId = credential.user!.uid;
+        _userName = name;
+        _userEmail = email;
 
-    if (name.isNotEmpty && email.contains('@') && password.length >= 6) {
+        // Sync profile to Firestore
+        await FirebaseService.instance.syncUserProfileToCloud(
+          _userId!,
+          _userName,
+          _userEmail,
+          _fitnessLevel,
+        );
+
+        // Store profile in SQLite local db
+        await DatabaseService.instance.insert('users', {
+          'id': _userId!,
+          'name': _userName,
+          'email': _userEmail,
+          'password': password,
+          'fitness_level': _fitnessLevel,
+        }, syncToCloud: false);
+      } else {
+        // Offline / Local Mode check for duplicate accounts
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        final existing = await DatabaseService.instance.query(
+          'users',
+          where: 'email = ?',
+          whereArgs: [email],
+        );
+        if (existing.isNotEmpty) {
+          _isLoading = false;
+          notifyListeners();
+          return 'An account already exists with this email.';
+        }
+
+        _userId = 'user_${email.hashCode}';
+        _userName = name;
+        _userEmail = email;
+
+        // Save profile in SQLite local db
+        await DatabaseService.instance.insert('users', {
+          'id': _userId!,
+          'name': _userName,
+          'email': _userEmail,
+          'password': password,
+          'fitness_level': _fitnessLevel,
+        }, syncToCloud: false);
+      }
+
       _isAuthenticated = true;
-      _userName = name;
-      _userEmail = email;
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('is_authenticated', true);
@@ -116,12 +190,12 @@ class AuthProvider extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-      return true;
+      return null; // success
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return e.toString().replaceAll('Exception: ', '');
     }
-
-    _isLoading = false;
-    notifyListeners();
-    return false;
   }
 
   Future<void> loginWithSocial(String provider) async {
@@ -153,6 +227,30 @@ class AuthProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', _userName);
     await prefs.setString('fitness_level', _fitnessLevel);
+
+    if (_userId != null) {
+      // Update in local SQLite
+      await DatabaseService.instance.update(
+        'users',
+        {
+          'name': _userName,
+          'fitness_level': _fitnessLevel,
+        },
+        where: 'id = ?',
+        whereArgs: [_userId],
+        syncToCloud: false,
+      );
+
+      // Sync to Firestore
+      if (FirebaseService.instance.isFirebaseAvailable) {
+        await FirebaseService.instance.syncUserProfileToCloud(
+          _userId!,
+          _userName,
+          _userEmail,
+          _fitnessLevel,
+        );
+      }
+    }
     notifyListeners();
   }
 

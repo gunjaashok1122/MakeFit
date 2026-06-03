@@ -10,15 +10,18 @@ import 'screens/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize notification service wrappers
-  await NotificationService.instance.init();
+  // Initialize notification service wrappers asynchronously (non-blocking)
+  NotificationService.instance.init();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => FitnessProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, FitnessProvider>(
+          create: (context) => FitnessProvider(),
+          update: (context, auth, fitness) => fitness!..updateUser(auth.userId),
+        ),
       ],
       child: const MakeFitApp(),
     ),

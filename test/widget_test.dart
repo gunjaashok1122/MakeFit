@@ -21,7 +21,10 @@ void main() {
         providers: [
           ChangeNotifierProvider(create: (_) => ThemeProvider()),
           ChangeNotifierProvider(create: (_) => AuthProvider()),
-          ChangeNotifierProvider(create: (_) => FitnessProvider()),
+          ChangeNotifierProxyProvider<AuthProvider, FitnessProvider>(
+            create: (context) => FitnessProvider(),
+            update: (context, auth, fitness) => fitness!..updateUser(auth.userId),
+          ),
         ],
         child: const MakeFitApp(),
       ),

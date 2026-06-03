@@ -21,6 +21,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 class FitnessProvider extends ChangeNotifier {
   final DatabaseService _db = DatabaseService.instance;
   final Uuid _uuid = const Uuid();
+  String? _currentUserId;
 
   // State collections
   List<WorkoutModel> _workouts = [];
@@ -75,7 +76,6 @@ class FitnessProvider extends ChangeNotifier {
   FitnessProvider() {
     initData();
     _listenToConnectivity();
-    _listenToAuthChanges();
   }
 
   Future<void> initData() async {
@@ -98,41 +98,27 @@ class FitnessProvider extends ChangeNotifier {
   }
 
   Future<void> _loadAllData() async {
-    // 1. Fetch workouts
-    final workoutData = await _db.query('workouts', orderBy: 'date DESC');
-    _workouts = workoutData.map((e) => WorkoutModel.fromMap(e)).toList();
+    final results = await Future.wait([
+      _db.query('workouts', orderBy: 'date DESC'),
+      _db.query('activity_logs', orderBy: 'date DESC'),
+      _db.query('water_logs', orderBy: 'date DESC'),
+      _db.query('body_stats', orderBy: 'date DESC'),
+      _db.query('sleep_logs', orderBy: 'date DESC'),
+      _db.query('mood_logs', orderBy: 'date DESC'),
+      _db.query('goals'),
+      _db.query('badges'),
+      _db.query('challenges'),
+    ]);
 
-    // 2. Fetch activities
-    final activityData = await _db.query('activity_logs', orderBy: 'date DESC');
-    _activities = activityData.map((e) => ActivityModel.fromMap(e)).toList();
-
-    // 3. Fetch water logs
-    final waterData = await _db.query('water_logs', orderBy: 'date DESC');
-    _waterLogs = waterData.map((e) => WaterModel.fromMap(e)).toList();
-
-    // 4. Fetch body stats
-    final statsData = await _db.query('body_stats', orderBy: 'date DESC');
-    _bodyStats = statsData.map((e) => BodyStatsModel.fromMap(e)).toList();
-
-    // 5. Fetch sleep logs
-    final sleepData = await _db.query('sleep_logs', orderBy: 'date DESC');
-    _sleepLogs = sleepData.map((e) => SleepModel.fromMap(e)).toList();
-
-    // 6. Fetch mood logs
-    final moodData = await _db.query('mood_logs', orderBy: 'date DESC');
-    _moodLogs = moodData.map((e) => MoodModel.fromMap(e)).toList();
-
-    // 7. Fetch goals
-    final goalData = await _db.query('goals');
-    _goals = goalData.map((e) => GoalModel.fromMap(e)).toList();
-
-    // 8. Fetch badges
-    final badgeData = await _db.query('badges');
-    _badges = badgeData.map((e) => BadgeModel.fromMap(e)).toList();
-
-    // 9. Fetch challenges
-    final challengeData = await _db.query('challenges');
-    _challenges = challengeData.map((e) => ChallengeModel.fromMap(e)).toList();
+    _workouts = results[0].map((e) => WorkoutModel.fromMap(e)).toList();
+    _activities = results[1].map((e) => ActivityModel.fromMap(e)).toList();
+    _waterLogs = results[2].map((e) => WaterModel.fromMap(e)).toList();
+    _bodyStats = results[3].map((e) => BodyStatsModel.fromMap(e)).toList();
+    _sleepLogs = results[4].map((e) => SleepModel.fromMap(e)).toList();
+    _moodLogs = results[5].map((e) => MoodModel.fromMap(e)).toList();
+    _goals = results[6].map((e) => GoalModel.fromMap(e)).toList();
+    _badges = results[7].map((e) => BadgeModel.fromMap(e)).toList();
+    _challenges = results[8].map((e) => ChallengeModel.fromMap(e)).toList();
 
     // Calculate current goals based on daily logs
     _calculateCurrentGoals();
@@ -610,63 +596,65 @@ class FitnessProvider extends ChangeNotifier {
     });
   }
 
-  void _listenToAuthChanges() {
-    if (!FirebaseService.instance.isFirebaseAvailable) return;
-    FirebaseAuth.instance.authStateChanges().listen((user) async {
-      if (user != null) {
-        print('Auth state changed: User logged in: ${user.uid}. Starting cloud sync...');
-        _isLoading = true;
-        notifyListeners();
-        
-        try {
-          // 1. Pull database tables from cloud and write locally
-          await _db.pullAndSyncAllFromCloud(user.uid);
+  Future<void> updateUser(String? newUserId) async {
+    if (_currentUserId == newUserId) return;
+    _currentUserId = newUserId;
+
+    if (newUserId != null) {
+      print('User logged in: $newUserId. Starting cloud sync and data fetch...');
+      _isLoading = true;
+      notifyListeners();
+
+      try {
+        if (FirebaseService.instance.isFirebaseAvailable) {
+          // Pull database tables from cloud and write locally
+          await _db.pullAndSyncAllFromCloud(newUserId);
           
-          // 2. Pull settings from cloud and write to SharedPrefs & memory variables
+          // Pull settings from cloud and write to SharedPrefs & memory variables
           await pullAndSyncSettingsFromCloud();
-          
-          // 3. Load all data from DB to memory
-          await _loadAllData();
-          
-          // 4. Generate AI suggestions
-          _generateAISuggestions();
-        } catch (e) {
-          print('Error during auth cloud sync: $e');
-        } finally {
-          _isLoading = false;
-          notifyListeners();
         }
-      } else {
-        print('Auth state changed: User logged out. Clearing and reseeding database...');
-        _isLoading = true;
+        
+        // Load all data from DB to memory
+        await _loadAllData();
+        
+        // Generate AI suggestions
+        _generateAISuggestions();
+      } catch (e) {
+        print('Error during user login sync: $e');
+      } finally {
+        _isLoading = false;
         notifyListeners();
-        try {
-          await _db.reseedDatabase();
-          
-          // Clear preferences
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('user_dob');
-          await prefs.remove('saved_tasks');
-          await prefs.remove('focus_sessions_cleared');
-          await prefs.remove('focus_history');
-          
-          // Reset local variables
-          _dob = DateTime(2001, 1, 15);
-          _savedTasks = [];
-          _focusSessionsCleared = 0;
-          _focusHistory = [];
-          
-          // Reload memory lists
-          await _loadAllData();
-          _generateAISuggestions();
-        } catch (e) {
-          print('Error resetting database on logout: $e');
-        } finally {
-          _isLoading = false;
-          notifyListeners();
-        }
       }
-    });
+    } else {
+      print('User logged out. Wiping local data cache...');
+      _isLoading = true;
+      notifyListeners();
+      try {
+        await _db.clearAllData();
+        
+        // Clear preferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('user_dob');
+        await prefs.remove('saved_tasks');
+        await prefs.remove('focus_sessions_cleared');
+        await prefs.remove('focus_history');
+        
+        // Reset local variables
+        _dob = DateTime(2001, 1, 15);
+        _savedTasks = [];
+        _focusSessionsCleared = 0;
+        _focusHistory = [];
+        
+        // Reload memory lists (empty state)
+        await _loadAllData();
+        _generateAISuggestions();
+      } catch (e) {
+        print('Error resetting database on logout: $e');
+      } finally {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> pullAndSyncSettingsFromCloud() async {

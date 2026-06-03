@@ -40,22 +40,22 @@ class _AuthScreenState extends State<AuthScreen> {
     });
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    bool success = false;
+    final String? error;
 
     if (_isLogin) {
-      success = await authProvider.login(
+      error = await authProvider.login(
         _emailController.text.trim(),
         _passwordController.text,
       );
     } else {
-      success = await authProvider.register(
+      error = await authProvider.register(
         _nameController.text.trim(),
         _emailController.text.trim(),
         _passwordController.text,
       );
     }
 
-    if (success) {
+    if (error == null) {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
@@ -70,9 +70,7 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     } else {
       setState(() {
-        _errorMessage = _isLogin 
-            ? 'Invalid email or password (min 6 characters)' 
-            : 'Please fill all details correctly';
+        _errorMessage = error ?? '';
       });
     }
   }

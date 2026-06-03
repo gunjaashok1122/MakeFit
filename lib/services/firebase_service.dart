@@ -40,9 +40,20 @@ class FirebaseService {
         await credential.user!.updateDisplayName(name);
       }
       return credential;
+    } on FirebaseAuthException catch (e) {
+      String msg = 'Sign up failed.';
+      if (e.code == 'email-already-in-use') {
+        msg = 'An account already exists with this email.';
+      } else if (e.code == 'invalid-email') {
+        msg = 'The email address is invalid.';
+      } else if (e.code == 'weak-password') {
+        msg = 'The password is too weak.';
+      } else if (e.message != null) {
+        msg = e.message!;
+      }
+      throw Exception(msg);
     } catch (e) {
-      print('Firebase Auth Sign Up failed: $e');
-      return null;
+      throw Exception('Sign up failed: $e');
     }
   }
 
@@ -53,8 +64,55 @@ class FirebaseService {
         email: email,
         password: password,
       );
+    } on FirebaseAuthException catch (e) {
+      String msg = 'Login failed.';
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        msg = 'Incorrect email or password.';
+      } else if (e.code == 'invalid-email') {
+        msg = 'The email address is invalid.';
+      } else if (e.code == 'user-disabled') {
+        msg = 'This user account has been disabled.';
+      } else if (e.message != null) {
+        msg = e.message!;
+      }
+      throw Exception(msg);
     } catch (e) {
-      print('Firebase Auth Sign In failed: $e');
+      throw Exception('Login failed: $e');
+    }
+  }
+
+  Future<void> syncUserProfileToCloud(String userId, String name, String email, String fitnessLevel) async {
+    if (!_isFirebaseAvailable) return;
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('profile')
+          .doc('config')
+          .set({
+            'name': name,
+            'email': email,
+            'fitness_level': fitnessLevel,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+      print('User profile synced to cloud.');
+    } catch (e) {
+      print('Failed to sync user profile to cloud: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> pullUserProfileFromCloud(String userId) async {
+    if (!_isFirebaseAvailable) return null;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('profile')
+          .doc('config')
+          .get();
+      return doc.data();
+    } catch (e) {
+      print('Failed to pull user profile from cloud: $e');
       return null;
     }
   }

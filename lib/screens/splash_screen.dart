@@ -38,10 +38,14 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _startLoadingSimulation() {
     const totalTicks = 50;
-    const duration = Duration(milliseconds: 2500);
+    const duration = Duration(milliseconds: 800);
     final tickDuration = duration ~/ totalTicks;
 
     _progressTimer = Timer.periodic(tickDuration, (timer) {
+      if (!mounted) {
+        _progressTimer?.cancel();
+        return;
+      }
       setState(() {
         if (_loadingProgress >= 1.0) {
           _progressTimer?.cancel();

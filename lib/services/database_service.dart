@@ -21,6 +21,7 @@ class DatabaseService {
 
   // In-memory tables for Web/Desktop fallback testing
   final Map<String, List<Map<String, dynamic>>> _memoryDb = {
+    'users': [],
     'workouts': [],
     'activity_logs': [],
     'water_logs': [],
@@ -69,12 +70,49 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
   }
 
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          fitness_level TEXT
+        )
+      ''');
+
+      try {
+        await db.insert('users', {
+          'id': 'alex_123',
+          'name': 'Alex Johnson',
+          'email': 'alex@example.com',
+          'password': 'password123',
+          'fitness_level': 'Intermediate',
+        });
+      } catch (e) {
+        print('Test user already exists or error seeding: $e');
+      }
+    }
+  }
+
   Future _createDB(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        fitness_level TEXT
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE workouts (
         id TEXT PRIMARY KEY,
@@ -178,6 +216,15 @@ class DatabaseService {
     // Seeds database
     final now = DateTime.now();
     final uuid = Uuid();
+
+    // User seed
+    await db.insert('users', {
+      'id': 'alex_123',
+      'name': 'Alex Johnson',
+      'email': 'alex@example.com',
+      'password': 'password123',
+      'fitness_level': 'Intermediate',
+    });
 
     // Workouts seeds
     final seedWorkouts = [
@@ -355,6 +402,17 @@ class DatabaseService {
     final now = DateTime.now();
     final uuid = Uuid();
 
+    // Seed users
+    _memoryDb['users'] = [
+      {
+        'id': 'alex_123',
+        'name': 'Alex Johnson',
+        'email': 'alex@example.com',
+        'password': 'password123',
+        'fitness_level': 'Intermediate',
+      }
+    ];
+
     // Seed workouts
     _memoryDb['workouts'] = [
       WorkoutModel(
@@ -528,12 +586,14 @@ class DatabaseService {
     
     List<Map<String, dynamic>> list = List.from(_memoryDb[table] ?? []);
     // Apply where filters if in-memory
-    if (where != null && whereArgs != null) {
+    if (where != null && whereArgs != null && whereArgs.isNotEmpty) {
       // Simple manual mock implementations for common queries
       if (where.contains('id = ?')) {
         list = list.where((item) => item['id'] == whereArgs[0]).toList();
       } else if (where.contains('type = ?')) {
         list = list.where((item) => item['type'] == whereArgs[0]).toList();
+      } else if (where.contains('email = ?')) {
+        list = list.where((item) => item['email'] == whereArgs[0]).toList();
       }
     }
     return list;
