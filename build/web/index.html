@@ -1,24 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="A premium mobile fitness tracking and health monitoring application.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,10 +16,284 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>makefit</title>
+  <title>MakeFit - Premium Fitness Simulator</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Google Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #080918;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Mockup Container */
+    .mockup-container {
+      display: none; /* Managed by JavaScript */
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 60px;
+      padding: 40px;
+      box-sizing: border-box;
+      position: relative;
+      background: radial-gradient(circle at 10% 20%, rgba(15, 16, 35, 1) 0%, rgba(8, 9, 24, 1) 90%);
+    }
+
+    /* Glowing Lights */
+    .light-circle {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: 1;
+      opacity: 0.35;
+    }
+    .light-1 {
+      top: -100px;
+      right: -100px;
+      width: 400px;
+      height: 400px;
+      background: #9D4EDD;
+    }
+    .light-2 {
+      bottom: -150px;
+      left: -100px;
+      width: 450px;
+      height: 450px;
+      background: #E01E79;
+    }
+
+    /* Left Info Sidebar */
+    .info-panel {
+      width: 380px;
+      color: #ffffff;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      color: #9D4EDD;
+    }
+    .logo-text {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(to right, #ffffff, #9D4EDD);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .info-title {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+    }
+    .info-desc {
+      font-size: 15px;
+      color: #8B8C9E;
+      line-height: 1.6;
+    }
+    .feature-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .tag {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #c5c6d0;
+    }
+    .status-box {
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-box p {
+      font-size: 13px;
+      color: #8B8C9E;
+      margin: 0;
+      font-weight: 500;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4EA8DE;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #4EA8DE;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    /* Phone Simulator */
+    .phone-frame {
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .phone-shell {
+      width: 360px;
+      height: 740px;
+      background: #000000;
+      border-radius: 46px;
+      padding: 12px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 4px #2b2b2b, 0 0 0 10px #15161c;
+      position: relative;
+      overflow: hidden;
+    }
+    .phone-notch {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140px;
+      height: 26px;
+      background: #000;
+      border-bottom-left-radius: 18px;
+      border-bottom-right-radius: 18px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .speaker {
+      width: 45px;
+      height: 4px;
+      background: #222;
+      border-radius: 2px;
+    }
+    .camera {
+      width: 8px;
+      height: 8px;
+      background: #111;
+      border-radius: 50%;
+      border: 1px solid #222;
+    }
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 36px;
+      overflow: hidden;
+      background-color: #0b0c1e;
+      position: relative;
+    }
+    .app-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background-color: transparent;
+    }
+  </style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Mockup View Container -->
+  <div id="mockup-view" class="mockup-container">
+    <div class="light-circle light-1"></div>
+    <div class="light-circle light-2"></div>
+    
+    <div class="info-panel">
+      <div class="logo-area">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+          <line x1="6" y1="1" x2="6" y2="4"></line>
+          <line x1="10" y1="1" x2="10" y2="4"></line>
+          <line x1="14" y1="1" x2="14" y2="4"></line>
+        </svg>
+        <span class="logo-text">MakeFit</span>
+      </div>
+      <h1 class="info-title">Premium Fitness & Health Tracker</h1>
+      <p class="info-desc">
+        Take control of your health with our state-of-the-art responsive simulator. Complete signin, signup, profile edits, and logout functionalities with real-time Firestore database synchronization.
+      </p>
+      <div class="feature-tags">
+        <span class="tag">⚡ Under 3s Launch</span>
+        <span class="tag">🔐 Firebase Auth</span>
+        <span class="tag">🔄 Realtime Sync</span>
+        <span class="tag">💾 Offline SQLite</span>
+      </div>
+      <div class="status-box">
+        <p>Interactive Simulator active</p>
+        <div class="status-indicator">
+          <div class="pulse-dot"></div> Live Build
+        </div>
+      </div>
+    </div>
+
+    <div class="phone-frame">
+      <div class="phone-shell">
+        <div class="phone-notch">
+          <div class="speaker"></div>
+          <div class="camera"></div>
+        </div>
+        <div class="phone-screen">
+          <iframe id="app-iframe" class="app-iframe"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const isEmbedded = urlParams.get('embed') === 'true';
+    const isMobile = window.innerWidth <= 850 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    if (isEmbedded || isMobile) {
+      // Run the actual Flutter Web App directly
+      const script = document.createElement('script');
+      script.src = 'flutter_bootstrap.js';
+      script.async = true;
+      document.body.appendChild(script);
+    } else {
+      // Show the smartphone mockup frame and load the app inside the iframe
+      const mockupView = document.getElementById('mockup-view');
+      mockupView.style.display = 'flex';
+      
+      const iframe = document.getElementById('app-iframe');
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('embed', 'true');
+      iframe.src = currentUrl.toString();
+    }
+  </script>
 </body>
 </html>
