@@ -86,6 +86,18 @@ class FirebaseService {
     }
   }
 
+  Future<UserCredential?> signInWithGoogle() async {
+    if (!isFirebaseAvailable) return null;
+    try {
+      GoogleAuthProvider googleProvider = GoogleAuthProvider();
+      return await FirebaseAuth.instance.signInWithPopup(googleProvider);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? 'Google Sign In failed.');
+    } catch (e) {
+      throw Exception('Google Sign In failed: $e');
+    }
+  }
+
   Future<void> syncUserProfileToCloud(String userId, String name, String email, String fitnessLevel) async {
     if (!isFirebaseAvailable) return;
     try {

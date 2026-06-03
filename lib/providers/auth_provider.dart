@@ -198,26 +198,72 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loginWithSocial(String provider) async {
+  Future<String?> loginWithSocial(String provider) async {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    try {
+      if (provider == 'Google' && FirebaseService.instance.isFirebaseAvailable) {
+        final credential = await FirebaseService.instance.signInWithGoogle();
+        if (credential == null || credential.user == null) {
+          _isLoading = false;
+          notifyListeners();
+          return 'Google authentication failed.';
+        }
+        _userId = credential.user!.uid;
+        _userName = credential.user!.displayName ?? 'Google User';
+        _userEmail = credential.user!.email ?? 'google@example.com';
+        
+        // Sync profile to Firestore
+        await FirebaseService.instance.syncUserProfileToCloud(
+          _userId!,
+          _userName,
+          _userEmail,
+          _fitnessLevel,
+        );
 
-    _isAuthenticated = true;
-    _userId = '${provider.toLowerCase()}_user';
-    _userName = 'Alex Johnson';
-    _userEmail = 'alex.johnson@$provider.com';
+        // Store profile in SQLite local db
+        await DatabaseService.instance.insert('users', {
+          'id': _userId!,
+          'name': _userName,
+          'email': _userEmail,
+          'password': 'google_auth_placeholder',
+          'fitness_level': _fitnessLevel,
+        }, syncToCloud: false);
+      } else {
+        // Mock social login for local/offline mode or Apple provider
+        await Future.delayed(const Duration(milliseconds: 1000));
+        _userId = '${provider.toLowerCase()}_user_123';
+        _userName = 'Alex Johnson';
+        _userEmail = 'alex.johnson@example.com';
+        
+        // Save to local db
+        await DatabaseService.instance.insert('users', {
+          'id': _userId!,
+          'name': _userName,
+          'email': _userEmail,
+          'password': 'social_auth_placeholder',
+          'fitness_level': _fitnessLevel,
+        }, syncToCloud: false);
+      }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_authenticated', true);
-    await prefs.setString('user_id', _userId!);
-    await prefs.setString('user_name', _userName);
-    await prefs.setString('user_email', _userEmail);
-    await prefs.setString('fitness_level', _fitnessLevel);
+      _isAuthenticated = true;
 
-    _isLoading = false;
-    notifyListeners();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_authenticated', true);
+      await prefs.setString('user_id', _userId!);
+      await prefs.setString('user_name', _userName);
+      await prefs.setString('user_email', _userEmail);
+      await prefs.setString('fitness_level', _fitnessLevel);
+
+      _isLoading = false;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return e.toString().replaceAll('Exception: ', '');
+    }
   }
 
   Future<void> updateProfile({required String name, required String fitnessLevel}) async {

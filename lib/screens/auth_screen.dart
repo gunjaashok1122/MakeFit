@@ -76,19 +76,32 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _socialSignIn(String provider) async {
+    setState(() {
+      _errorMessage = '';
+    });
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.loginWithSocial(provider);
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const MainNavigationWrapper(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
-      );
+    final String? error = await authProvider.loginWithSocial(provider);
+
+    if (error == null) {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const MainNavigationWrapper(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _errorMessage = error;
+        });
+      }
     }
   }
 

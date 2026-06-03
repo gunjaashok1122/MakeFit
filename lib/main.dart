@@ -61,6 +61,28 @@ class MakeFitApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeProvider.themeMode,
       home: const SplashScreen(),
+      builder: (context, child) {
+        return ClipRect(
+          child: Container(
+            color: const Color(0xFF060713), // outer deep background
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 450),
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: child!,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
